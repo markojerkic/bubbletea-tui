@@ -5,12 +5,13 @@ package main
 
 import (
 	"log"
+	"tui/register"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 func main() {
-	p := tea.NewProgram(initialRegistrationView())
+	p := tea.NewProgram(register.InitRegister())
 
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
