@@ -26,7 +26,7 @@ func InitRegister() model {
 	ti.CharLimit = 156
 	ti.Width = 20
 
-	vp := viewport.New(50, 5)
+	vp := viewport.New(50, 1)
 	vp.SetContent("Welcome to my chat app! Please enter your username and press enter to continue.")
 
 	return model{
@@ -74,7 +74,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
 	return fmt.Sprintf(
 		"%s\n%s",
-		m.viewPort.View(),
+		<-m.selectedUserName,
 		m.textInput.View(),
 	)
 }
