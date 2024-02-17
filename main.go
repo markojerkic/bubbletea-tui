@@ -8,29 +8,23 @@ import (
 )
 
 type model struct {
-	mChan        chan chat.Message
-	messageInput chat.ChatInput
-	messagesList chat.MessagesList
+	chat chat.MessagesList
 }
 
 func newChat() model {
 
-	mChan := make(chan chat.Message, 10)
-
 	return model{
-		messageInput: chat.NewChatInput(mChan),
-		messagesList: chat.NewChat(mChan),
+		chat: chat.NewChat(),
 	}
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(m.messageInput.Init(), m.messagesList.Init())
+	return m.chat.Init()
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
-		inputCmd tea.Cmd
-		listCmd  tea.Cmd
+		cmd tea.Cmd
 	)
 
 	switch msg := msg.(type) {
@@ -41,16 +35,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	log.Println("update", msg)
+	m.chat, cmd = m.chat.Update(msg)
 
-	m.messageInput, inputCmd = m.messageInput.Update(msg)
-	m.messagesList, listCmd = m.messagesList.Update(msg)
-
-	return m, tea.Batch(inputCmd, listCmd)
+	return m, cmd
 }
 
 func (m model) View() string {
-	return m.messageInput.View() + "\n\n" + m.messagesList.View()
+	return m.chat.View()
 }
 
 func main() {

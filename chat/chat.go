@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -16,31 +17,53 @@ type Message struct {
 }
 
 type MessagesList struct {
-	incoming             chan Message
 	messages             []Message
-	messagesListViewPort viewport.Model
+	messagesList viewport.Model
+	messageInput         textinput.Model
 }
 
-func NewChat(mChan chan Message) MessagesList {
+func NewChat() MessagesList {
+	textInput := textinput.New()
+	textInput.Focus()
 	return MessagesList{
-		incoming: mChan,
-		messagesListViewPort: viewport.Model{
+		messagesList: viewport.Model{
 			Height: 10,
 		},
+		messageInput: textInput,
 	}
 }
 
 func (c MessagesList) Init() tea.Cmd {
-	return textinput.Blink // viewport.Sync(c.messagesListViewPort)
+	c.messageInput.Focus()
+	return textinput.Blink
 }
 
 func (c MessagesList) Update(msg tea.Msg) (MessagesList, tea.Cmd) {
 
-	// newMessage := <-c.incoming
-	//
-	// c.messages = append(c.messages, newMessage)
+	var (
+		vCmd tea.Cmd
+		iCmd tea.Cmd
+	)
 
-	return c, nil
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyEnter:
+			message := Message{from: nil, message: c.messageInput.Value(),
+				isMine: true, date: time.Now()}
+			c.messageInput.Reset()
+
+			c.messages = append(c.messages, message)
+
+			c.messagesList.SetContent(c.getMessagesView())
+			c.messagesList.GotoBottom()
+		}
+	}
+
+	c.messagesList, vCmd = c.messagesList.Update(msg)
+	c.messageInput, iCmd = c.messageInput.Update(msg)
+
+	return c, tea.Batch(vCmd, iCmd)
 }
 
 func getSender(message Message) string {
@@ -52,17 +75,16 @@ func getSender(message Message) string {
 	}
 }
 
-func (c MessagesList) View() string {
+func (c MessagesList) getMessagesView() string {
 	listOfMessages := ""
 	for _, message := range c.messages {
-		listOfMessages += getSender(message) + ": " + message.message + "\n"
+		listOfMessages = fmt.Sprintf("%s%s: %s\n", listOfMessages, getSender(message), message.message)
 	}
+
 	return listOfMessages
 }
 
-// A command that waits for the activity on a channel.
-func waitForActivity(sub chan Message) tea.Cmd {
-	return func() tea.Msg {
-		return Message(<-sub)
-	}
+func (c MessagesList) View() string {
+	c.getMessagesView()
+	return fmt.Sprintf("%s\n%s", c.messagesList.View(), c.messageInput.View())
 }
