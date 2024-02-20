@@ -45,7 +45,7 @@ func (m model) View() string {
 }
 
 func main() {
-	p := tea.NewProgram(newChat())
+	p := tea.NewProgram(newChat(), tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)

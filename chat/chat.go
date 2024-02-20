@@ -2,11 +2,14 @@ package chat
 
 import (
 	"fmt"
+	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type Message struct {
@@ -17,18 +20,25 @@ type Message struct {
 }
 
 type MessagesList struct {
-	messages             []Message
+	messages     []Message
 	messagesList viewport.Model
-	messageInput         textinput.Model
+	messageInput textinput.Model
 }
 
 func NewChat() MessagesList {
 	textInput := textinput.New()
+	textInput.Placeholder = "Type a message and press enter to send"
 	textInput.Focus()
+
+	messagesList := viewport.Model{
+		Height: 10,
+	}
+
+	messagesList.Style = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("#FF00FF")).Margin(0, 1).Padding(1, 1)
+
 	return MessagesList{
-		messagesList: viewport.Model{
-			Height: 10,
-		},
+		messagesList: messagesList,
 		messageInput: textInput,
 	}
 }
@@ -40,30 +50,31 @@ func (c MessagesList) Init() tea.Cmd {
 
 func (c MessagesList) Update(msg tea.Msg) (MessagesList, tea.Cmd) {
 
-	var (
-		vCmd tea.Cmd
-		iCmd tea.Cmd
-	)
+	cmds := make([]tea.Cmd, 0)
+	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		c.messagesList.Width = msg.Width - 1
+		c.messagesList.Height = msg.Height - 10
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEnter:
 			message := Message{from: nil, message: c.messageInput.Value(),
 				isMine: true, date: time.Now()}
-			c.messageInput.Reset()
-
 			c.messages = append(c.messages, message)
 
 			c.messagesList.SetContent(c.getMessagesView())
 			c.messagesList.GotoBottom()
+
+			c.messageInput.Reset()
 		}
 	}
 
-	c.messagesList, vCmd = c.messagesList.Update(msg)
-	c.messageInput, iCmd = c.messageInput.Update(msg)
+	c.messageInput, cmd = c.messageInput.Update(msg)
+	cmds = append(cmds, cmd)
 
-	return c, tea.Batch(vCmd, iCmd)
+	return c, tea.Batch(cmds...)
 }
 
 func getSender(message Message) string {
@@ -75,16 +86,33 @@ func getSender(message Message) string {
 	}
 }
 
+func getRandomLeftOrRightPosition() lipgloss.Position {
+	random := rand.Intn(2)
+	if random == 1 {
+		return lipgloss.Right
+	}
+	return lipgloss.Right
+
+}
+
 func (c MessagesList) getMessagesView() string {
-	listOfMessages := ""
+	messages := make([]string, len(c.messages))
 	for _, message := range c.messages {
-		listOfMessages = fmt.Sprintf("%s%s: %s\n", listOfMessages, getSender(message), message.message)
+
+		line := lipgloss.NewStyle().Width(c.messagesList.Width) //.Align(getRandomLeftOrRightPosition())
+
+		messageBubble := lipgloss.NewStyle().
+			BorderStyle(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("2")).MaxWidth(60)
+
+		mess := line.Render(messageBubble.Render(lipgloss.NewStyle().Foreground(lipgloss.Color("5")).Render(getSender(message)) + "\n" + message.message))
+
+		messages = append(messages, mess)
 	}
 
-	return listOfMessages
+	return strings.Join(messages, "\n")
 }
 
 func (c MessagesList) View() string {
-	c.getMessagesView()
 	return fmt.Sprintf("%s\n%s", c.messagesList.View(), c.messageInput.View())
 }
